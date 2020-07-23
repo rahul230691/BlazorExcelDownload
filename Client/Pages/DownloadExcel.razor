@@ -1,0 +1,36 @@
+﻿@page "/download-excel"
+@inject IJSRuntime JSRuntime
+@inject HttpClient _httpClient
+
+<h3>Click Button to download Excel</h3>
+
+<button @onclick="@(async() => await DownloadFile())">Download</button>
+<br />
+@if (IsDownloadStarted == 1)
+{
+    <p>Downloading...Please wait</p>
+}
+else if (IsDownloadStarted == 2)
+{
+    <p>Download complete.</p>
+}
+
+@code {
+
+    public int IsDownloadStarted { get; set; } = 0;
+
+    protected async Task DownloadFile()
+    {
+        if (await JSRuntime.InvokeAsync<bool>("confirm", $"Do you want to Export?"))
+        {
+            IsDownloadStarted = 1;
+            StateHasChanged();
+            var response = await _httpClient.GetAsync("/api/files/DownloadExcel");
+            response.EnsureSuccessStatusCode();
+            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            var fileName = $"MyReport{DateTime.Now.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}.xlsx";
+            await JSRuntime.InvokeAsync<object>("saveAsFile", fileName, Convert.ToBase64String(fileBytes));
+            IsDownloadStarted = 2;
+        }
+    }
+}
